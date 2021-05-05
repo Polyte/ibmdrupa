@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello Drupal!</title>
+    <script src="https://unpkg.com/react@latest/dist/react.js"></script>
+    <script src="https://unpkg.com/react-dom@latest/dist/react-dom.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <div id="root">
+      <h1>Mobile Phone Products</h1>
+    </div>
+    <script type="text/babel">
+      //App component
+      class App extends React.Component{
+        constructor(props){
+          super(props);
+          this.state = {
+            nodes: []
+          }
+        }
+
+        componentWillMount(){
+          let self = this; //Once inside the axios request, this will not be the same this.
+          axios.get('/node/rest?_format=json')
+          .then(function (response){
+            let nodes = response.data;
+            self.setState({
+              nodes: nodes
+            })
+          })
+          .catch(function(error){
+            console.log(error);
+          })
+        }
+
+        render (){
+          return (
+            <div>
+              <NewNodeForm />
+              <NodeList nodes={this.state.nodes} />
+            </div>
+          ) 
+        }
+      }
+      // Node List Component
+      let NodeList = ({ nodes }) => {
+        return (
+          <div>
+            {nodes.map(n =>
+              <Node node={n} key={Math.random()}/>
+            )}
+          </div>
+        )
+      }
+      // Node Component
+      let Node = ({ node }) =>{
+        return (
+          <div>
+            <h4><a href={"/node/" + node.nid[0].value}>{node.title[0].value}</a></h4>
+            <div>{node.body[0].value}</div>
+          </div>
+        )
+      }
+      // Form Component
+      class NewNodeForm extends React.Component{
+        constructor(props){
+          super(props);
+          this.state = {
+            title: '',
+            body: '',
+            csrfToken: ''
+          }
+          this.handleSubmit = this.handleSubmit.bind(this);
+          this.handleTitleChange = this.handleTitleChange.bind(this);
+          this.handleBodyChange = this.handleBodyChange.bind(this);
+        }
+        componentWillMount(){
+          let self= this;
+          
+          axios.get('/rest/session/token')
+          .then(function (response){
+            const csrf_token = response.data;
+            console.log({csrf_token});
+            self.setState({'csrfToken': csrf_token});
+          })
+          .catch(function (error){
+            console.log(error);
+          });
+        }
+        render(){
+          return(
+            <form onSubmit={this.handleSubmit}>
+              <div>
+                <label htmlFor="title">Product Name: </label>
+                <input name="title" onChange={this.handleTitleChange} />
+              </div>
+              <div>
+                <label htmlFor="body">Description: </label>
+                <textarea name="body" onChange={this.handleBodyChange} />
+              </div>
+                <button> Submit </button>
+            </form>
+          )
+        }
+        handleTitleChange(e) {
+          this.setState({title:e.target.value});
+        }
+        handleBodyChange(e) {
+          this.setState({body:e.target.value});
+        }
+        handleSubmit(e) {
+          e.preventDefault();
+          let self = this.state;
+          console.log(self);
+          let node = {
+            "type":[{"target_id":"article","target_type":"node_type"}],
+            "title":[{"value": self.title}],
+            "body":[{"value": self.body}]
+          }
+          let config = {
+            headers: {'X-CSRF-Token': self.csrfToken}
+          }
+          axios.post('/entity/node?_format=json',node,config)
+          .then(function(success){
+            console.log(success);
+          })
+          .catch(function(error){
+            console.log(error)
+          });
+        }
+      } 
+
+      ReactDOM.render(
+        <App />,
+        document.getElementById('root')
+      );
+
+    </script>
+  </body>
+</html>
